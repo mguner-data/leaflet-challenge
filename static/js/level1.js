@@ -1,12 +1,12 @@
 // code for creating Basic Map (Level 1)
 console.log("js is loaded")
 // Store our API endpoint inside queryUrl
-//var queryUrl = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/1.0_month.geojson";
-var queryUrl = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"
+var queryUrl = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/1.0_month.geojson";
+//var queryUrl = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"
 
 // Perform a GET request to the query URL
-d3.json(queryUrl, function(error, data) {
-  if (error) throw error;
+d3.json(queryUrl).then (function(data) {
+ 
   console.log(data)
   // Once we get a response, send the data.features object to the createFeatures function
   createFeatures(data.features);
@@ -22,36 +22,27 @@ function createFeatures(earthquakeData) {
     <hr> <p> Magnitude: ${(feature.properties.mag)} </p>
     <hr> <p> Significance: ${(feature.properties.sig)} </p>`);
   }
-  function  chooseColor (feature, latlng) {
-    var color = "";
-    if (feature.properties.sig > 1000){
-      color = "#a50f15";
-    }
-    else if (feature.properties.sig > 750){
-      color = "#de2d26";
-    }
-    else if (feature.properties.sig > 500){
-      color = "#fb6a4a";
-    }
-    else if (feature.properties.sig > 250){
-        color = "#fcae91";
-      }
-    else {
-      color = "#fee5d9";
-    }
-    return new L.circle(latlng,{
-      fillOpacity: 0.4,
-      color: color,
-      fillColor: color,
-      radius: feature.properties.sig * 1000
-    })
+
+function pointToLayer (geoJsonPoint, latlng) {
+  return L.circleMarker(latlng);
 }
 
+function style (geoJsonFeature) {
+  return {
+    fillColor: chooseColor(geoJsonFeature.properties.sig),
+    fillOpacity: 0.7,
+    stroke: false,
+    radius: geoJsonFeature.properties.mag*5
+  }
+}
+
+  
   // Create a GeoJSON layer containing the features array on the earthquakeData object
   // Run the onEachFeature function once for each piece of data in the array
   var earthquakes = L.geoJSON(earthquakeData, {
     onEachFeature: onEachFeature,
-    //pointToLayer: pointToLayer
+    pointToLayer: pointToLayer,
+    style: style
   });
 
   // Sending our earthquakes layer to the createMap function
@@ -72,7 +63,7 @@ function createMap(earthquakes) {
       tileSize: 512,
       maxZoom: 18,
       zoomOffset: -1,
-      id: "mapbox/streets-v11",
+      id: "mapbox/dark-v10",
       accessToken: API_KEY
     });
 
@@ -101,4 +92,43 @@ function createMap(earthquakes) {
   L.control.layers(baseMaps, overlayMaps, {
     collapsed: false
   }).addTo(myMap);
+  var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'info legend'),
+        grades = [0, 250, 500, 750, 1000],
+        labels = [];
+
+    // loop through our density intervals and generate a label with a colored square for each interval
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML +=
+            '<i style="background:' + chooseColor(grades[i] + 1) + '"></i> ' +
+            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+    }
+
+    return div;
+};
+
+legend.addTo(myMap);
+}
+function  chooseColor (x) {
+  var color = "";
+  if (x > 1000){
+    color = "#a50f15";
+  }
+  else if (x > 750){
+    color = "#de2d26";
+  }
+  else if (x > 500){
+    color = "#fb6a4a";
+  }
+  else if (x > 250){
+      color = "#fcae91";
+    }
+  else {
+    color = "#fee5d9";
+  }
+  return color
+  
 }
